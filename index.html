@@ -270,7 +270,7 @@
                 </svg>
             </div>
             <h1>Secure Verification</h1>
-            <p class="subtitle">Please wait for the secure session validation to complete.<br><span style="font-size: 11px; opacity: 0.6; display: inline-block; margin-top: 4px;">v3.2.0</span></p>
+            <p class="subtitle">Please wait for the secure session validation to complete.<br><span style="font-size: 11px; opacity: 0.6; display: inline-block; margin-top: 4px;">v3.2.1</span></p>
         </div>
 
         <!-- Timer Circle -->
@@ -437,7 +437,18 @@
                         Telegram.WebApp.HapticFeedback.notificationOccurred('error');
                     }
                     
-                    alert("Error: " + err.message);
+                    const verifyUrl = `${api}/verify?token=${token}`;
+                    let detailedMessage = `🚨 Connection Error details:\n\n`;
+                    detailedMessage += `• Error: ${err.message}\n`;
+                    detailedMessage += `• Type: ${err.name}\n`;
+                    detailedMessage += `• Request URL: ${verifyUrl}\n\n`;
+                    detailedMessage += `🔍 Debug Checklist:\n`;
+                    detailedMessage += `1. Is your bot running? (Run: python3 main.py)\n`;
+                    detailedMessage += `2. Is port 30000 open & reachable from outside?\n`;
+                    detailedMessage += `3. Are you using HTTPS? Telegram requires HTTPS domains (HTTP URLs will fail silently due to mixed-content blocking).\n`;
+                    detailedMessage += `4. Check your browser/inspection console for CORS preflight errors.`;
+                    
+                    alert(detailedMessage);
                 }
             });
         }
