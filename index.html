@@ -270,7 +270,7 @@
                 </svg>
             </div>
             <h1>Secure Verification</h1>
-            <p class="subtitle">Please wait for the secure session validation to complete.<br><span style="font-size: 11px; opacity: 0.6; display: inline-block; margin-top: 4px;">v3.3.1</span></p>
+            <p class="subtitle">Please wait for the secure session validation to complete.<br><span style="font-size: 11px; opacity: 0.6; display: inline-block; margin-top: 4px;">v4.0.0</span></p>
         </div>
 
         <!-- Timer Circle -->
@@ -371,17 +371,12 @@
                     numberDisplay.textContent = "✓";
                     labelDisplay.textContent = "Verified";
                     
-                    const startParam = `verify_ok_${payload}`;
-                    const telegramDeepLink = `https://t.me/${bot}?start=${startParam}`;
-                    
-                    // Enable Action Button and set fallback link
+                    // Enable Action Button
                     actionBtn.style.pointerEvents = "auto";
                     actionBtn.classList.add('active');
-                    actionBtn.href = telegramDeepLink;
-                    actionBtn.target = "_blank";
                     btnText.textContent = "Complete Verification";
                     
-                    // Vibrate to notify user if SDK is available
+                    // Haptic feedback on success
                     if (window.Telegram && window.Telegram.WebApp && Telegram.WebApp.HapticFeedback) {
                         Telegram.WebApp.HapticFeedback.notificationOccurred('success');
                     }
@@ -395,47 +390,37 @@
 
             let hasClicked = false;
 
-            // Click action (Redirects to Telegram bot start deep link)
+            // Click action — uses sendData() to send payload directly to bot
+            // This is the correct Telegram Mini App API: no deep links needed!
+            // The bot receives this as a web_app_data message handler.
             actionBtn.addEventListener('click', (e) => {
-                if (timeLeft > 0) {
-                    e.preventDefault();
+                e.preventDefault();
+                
+                if (timeLeft > 0 || hasClicked) {
                     return;
                 }
                 
-                const startParam = `verify_ok_${payload}`;
-                const telegramDeepLink = `https://t.me/${bot}?start=${startParam}`;
-                const tgProtoLink = `tg://resolve?domain=${bot}&start=${startParam}`;
-
+                hasClicked = true;
+                actionBtn.style.pointerEvents = "none";
+                actionBtn.style.opacity = "0.8";
+                btnText.textContent = "Sending to bot...";
+                
                 if (window.Telegram && window.Telegram.WebApp) {
-                    e.preventDefault(); // Stop native link redirect to handle it via SDK
-                    
-                    if (hasClicked) return;
-                    hasClicked = true;
-                    actionBtn.style.pointerEvents = "none";
-                    actionBtn.style.opacity = "0.7";
-                    btnText.textContent = "Redirecting back to bot...";
-                    
                     try {
-                        Telegram.WebApp.openTelegramLink(telegramDeepLink);
+                        // sendData() sends payload to bot as web_app_data and auto-closes the Mini App
+                        Telegram.WebApp.sendData(payload);
                     } catch (err) {
-                        window.location.href = tgProtoLink;
+                        hasClicked = false;
+                        actionBtn.style.pointerEvents = "auto";
+                        actionBtn.style.opacity = "1";
+                        btnText.textContent = "Complete Verification";
+                        alert("Error: " + err.message + "\n\nMake sure you opened this via Telegram.");
                     }
-                    
-                    // Close the WebApp after a small delay to handle transition registration safely
-                    setTimeout(() => {
-                        try {
-                            Telegram.WebApp.close();
-                        } catch (e) {}
-                    }, 1500);
                 } else {
-                    // Non-WebApp environment: let browser handle default <a> href navigation natively!
-                    if (hasClicked) {
-                        e.preventDefault();
-                        return;
-                    }
-                    hasClicked = true;
-                    actionBtn.style.opacity = "0.7";
-                    btnText.textContent = "Opening Telegram...";
+                    alert("Please open this page from Telegram to receive your files.");
+                    hasClicked = false;
+                    actionBtn.style.pointerEvents = "auto";
+                    actionBtn.style.opacity = "1";
                 }
             });
         }
