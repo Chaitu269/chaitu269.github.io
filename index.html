@@ -303,9 +303,15 @@
     </div>
 
     <!-- Error container -->
-    <div class="error-box" id="error-box">
-        ⚠️ <strong>Verification Error</strong><br>
-        <span id="error-message">Invalid session details. Please try requesting the files again from Telegram.</span>
+    <div class="error-box" id="error-box" style="display:none; flex-direction:column; align-items:center; gap:12px; padding:32px 20px;">
+        <div style="font-size:48px;">⚠️</div>
+        <strong style="font-size:18px;">Open from Telegram</strong>
+        <span id="error-message" style="text-align:center; opacity:0.75; line-height:1.6;">
+            This page must be opened via the bot's Verify button inside Telegram — it cannot be accessed directly in a browser.
+        </span>
+        <div style="margin-top:12px; padding:8px 16px; background:rgba(255,255,255,0.05); border-radius:8px; font-size:11px; opacity:0.5; font-family:monospace;">
+            Code Version: v4.0.0
+        </div>
     </div>
 
     <script>
@@ -331,8 +337,7 @@
         // Validation Check
         if (!payload || !bot) {
             mainContent.style.display = 'none';
-            errorBox.style.display = 'block';
-            errorMessage.textContent = 'Verification parameters are missing. Please launch the link directly from the bot.';
+            errorBox.style.display = 'flex';
         } else {
             startVerification(payload, bot, countdownSeconds);
         }
