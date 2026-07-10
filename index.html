@@ -146,16 +146,17 @@
                 loader.style.display = 'block';
                 titleEl.innerText = "Redirecting...";
                 
-                const deepLink = `https://t.me/${botUsername}?start=getfile_${token}`;
+                const tgLink = `tg://resolve?domain=${botUsername}&start=getfile_${token}`;
+                const tMeLink = `https://t.me/${botUsername}?start=getfile_${token}`;
                 
-                // Show fallback message with clickable link in case redirect is slow or doesn't execute automatically
+                // Show fallback message with standard external link in case native redirect fails
                 subtitleEl.innerHTML = `Returning you to the bot to get your file...<br><br>` +
-                    `<a href="#" onclick="window.Telegram.WebApp.openTelegramLink('${deepLink}'); return false;" ` +
+                    `<a href="${tMeLink}" target="_blank" ` +
                     `style="color: var(--tg-theme-link-color, #3390ec); font-weight: bold; text-decoration: underline; font-size: 15px;">` +
                     `Click here if not redirected automatically</a>`;
                 
-                // Redirect back to the bot
-                window.Telegram.WebApp.openTelegramLink(deepLink);
+                // Redirect back to the bot natively using tg:// link
+                window.Telegram.WebApp.openTelegramLink(tgLink);
                 
                 // Close the mini app after a safe delay of 1.5 seconds
                 // This ensures the client registers the openTelegramLink request before the WebApp is closed.
