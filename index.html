@@ -270,7 +270,7 @@
                 </svg>
             </div>
             <h1>Secure Verification</h1>
-            <p class="subtitle">Please wait for the secure session validation to complete.<br><span style="font-size: 11px; opacity: 0.6; display: inline-block; margin-top: 4px;">v3.0.0</span></p>
+            <p class="subtitle">Please wait for the secure session validation to complete.<br><span style="font-size: 11px; opacity: 0.6; display: inline-block; margin-top: 4px;">v3.1.0</span></p>
         </div>
 
         <!-- Timer Circle -->
@@ -393,29 +393,34 @@
 
             // Click action
             actionBtn.addEventListener('click', (e) => {
+                e.preventDefault(); // Stop default browser iframe navigation
+                
                 if (timeLeft > 0) {
-                    e.preventDefault();
                     return;
                 }
                 
-                // Native fallback sequence if client doesn't navigate instantly
+                const startParam = `verify_ma_${token}`;
+                const telegramDeepLink = `https://t.me/${bot}?start=${startParam}`;
+                const tgProtoLink = `tg://resolve?domain=${bot}&start=${startParam}`;
+
                 if (window.Telegram && window.Telegram.WebApp) {
-                    const startParam = `verify_ma_${token}`;
-                    const telegramDeepLink = `https://t.me/${bot}?start=${startParam}`;
-                    const tgProtoLink = `tg://resolve?domain=${bot}&start=${startParam}`;
-                    
                     try {
+                        // Native SDK method automatically handles opening and closing the webview
                         Telegram.WebApp.openTelegramLink(telegramDeepLink);
                     } catch (err) {
+                        // Fallback to native protocol
                         window.location.href = tgProtoLink;
                     }
                     
-                    // Close WebApp shortly after clicking
+                    // Close the WebApp after a small delay to handle platforms where it doesn't auto-close
                     setTimeout(() => {
                         try {
                             Telegram.WebApp.close();
-                        } catch (err) {}
-                    }, 250);
+                        } catch (e) {}
+                    }, 500);
+                } else {
+                    // Fallback for non-WebApp environment
+                    window.location.href = telegramDeepLink;
                 }
             });
         }
