@@ -145,16 +145,23 @@
                 actionBtn.style.display = 'none';
                 loader.style.display = 'block';
                 titleEl.innerText = "Redirecting...";
-                subtitleEl.innerText = "Returning you to the bot to get your file...";
+                
+                const deepLink = `https://t.me/${botUsername}?start=getfile_${token}`;
+                
+                // Show fallback message with clickable link in case redirect is slow or doesn't execute automatically
+                subtitleEl.innerHTML = `Returning you to the bot to get your file...<br><br>` +
+                    `<a href="#" onclick="window.Telegram.WebApp.openTelegramLink('${deepLink}'); return false;" ` +
+                    `style="color: var(--tg-theme-link-color, #3390ec); font-weight: bold; text-decoration: underline; font-size: 15px;">` +
+                    `Click here if not redirected automatically</a>`;
                 
                 // Redirect back to the bot
-                const deepLink = `https://t.me/${botUsername}?start=getfile_${token}`;
                 window.Telegram.WebApp.openTelegramLink(deepLink);
                 
-                // Close the mini app immediately after opening the link
+                // Close the mini app after a safe delay of 1.5 seconds
+                // This ensures the client registers the openTelegramLink request before the WebApp is closed.
                 setTimeout(() => {
                     window.Telegram.WebApp.close();
-                }, 100);
+                }, 1500);
             });
         }
     </script>
