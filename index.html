@@ -270,7 +270,7 @@
                 </svg>
             </div>
             <h1>Secure Verification</h1>
-            <p class="subtitle">Please wait for the secure session validation to complete.</p>
+            <p class="subtitle">Please wait for the secure session validation to complete.<br><span style="font-size: 11px; opacity: 0.6; display: inline-block; margin-top: 4px;">v3.0.0</span></p>
         </div>
 
         <!-- Timer Circle -->
@@ -295,10 +295,10 @@
 
         <!-- Action Button -->
         <div class="action-wrapper">
-            <button class="btn" id="action-btn" disabled>
+            <a href="#" class="btn" id="action-btn" style="pointer-events: none;">
                 <span class="btn-glow"></span>
                 <span id="btn-text">Initializing Secure Connection...</span>
-            </button>
+            </a>
         </div>
     </div>
 
@@ -372,9 +372,12 @@
                     labelDisplay.textContent = "Verified";
                     
                     // Enable Action Button
-                    actionBtn.disabled = false;
+                    actionBtn.style.pointerEvents = "auto";
                     actionBtn.classList.add('active');
                     btnText.textContent = "Complete Verification";
+                    
+                    const startParam = `verify_ma_${token}`;
+                    actionBtn.href = `https://t.me/${bot}?start=${startParam}`;
 
                     // Vibrate to notify user if SDK is available
                     if (window.Telegram && window.Telegram.WebApp && Telegram.WebApp.HapticFeedback) {
@@ -389,30 +392,30 @@
             }, 1000);
 
             // Click action
-            actionBtn.addEventListener('click', () => {
-                if (timeLeft <= 0) {
+            actionBtn.addEventListener('click', (e) => {
+                if (timeLeft > 0) {
+                    e.preventDefault();
+                    return;
+                }
+                
+                // Native fallback sequence if client doesn't navigate instantly
+                if (window.Telegram && window.Telegram.WebApp) {
                     const startParam = `verify_ma_${token}`;
                     const telegramDeepLink = `https://t.me/${bot}?start=${startParam}`;
                     const tgProtoLink = `tg://resolve?domain=${bot}&start=${startParam}`;
-
-                    if (window.Telegram && window.Telegram.WebApp) {
-                        try {
-                            // Try native SDK method to open deep links
-                            Telegram.WebApp.openTelegramLink(telegramDeepLink);
-                        } catch (err) {
-                            // Fallback to native protocol
-                            window.location.href = tgProtoLink;
-                        }
-                        // Close the WebApp after a small delay to prevent race conditions
-                        setTimeout(() => {
-                            try {
-                                Telegram.WebApp.close();
-                            } catch (e) {}
-                        }, 100);
-                    } else {
-                        // Fallback for non-WebApp environment
-                        window.location.href = telegramDeepLink;
+                    
+                    try {
+                        Telegram.WebApp.openTelegramLink(telegramDeepLink);
+                    } catch (err) {
+                        window.location.href = tgProtoLink;
                     }
+                    
+                    // Close WebApp shortly after clicking
+                    setTimeout(() => {
+                        try {
+                            Telegram.WebApp.close();
+                        } catch (err) {}
+                    }, 250);
                 }
             });
         }
