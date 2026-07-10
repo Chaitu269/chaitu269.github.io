@@ -270,7 +270,7 @@
                 </svg>
             </div>
             <h1>Secure Verification</h1>
-            <p class="subtitle">Please wait for the secure session validation to complete.<br><span style="font-size: 11px; opacity: 0.6; display: inline-block; margin-top: 4px;">v3.1.0</span></p>
+            <p class="subtitle">Please wait for the secure session validation to complete.<br><span style="font-size: 11px; opacity: 0.6; display: inline-block; margin-top: 4px;">v3.2.0</span></p>
         </div>
 
         <!-- Timer Circle -->
@@ -322,6 +322,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         const bot = urlParams.get('bot');
+        const api = urlParams.get('api');
         const countdownSeconds = parseInt(urlParams.get('cd')) || 5;
 
         const mainContent = document.getElementById('main-content');
@@ -329,15 +330,15 @@
         const errorMessage = document.getElementById('error-message');
 
         // Validation Check
-        if (!token || !bot) {
+        if (!token || !bot || !api) {
             mainContent.style.display = 'none';
             errorBox.style.display = 'block';
             errorMessage.textContent = 'Verification parameters are missing. Please launch the link directly from the bot.';
         } else {
-            startVerification(token, bot, countdownSeconds);
+            startVerification(token, bot, countdownSeconds, api);
         }
 
-        function startVerification(token, bot, duration) {
+        function startVerification(token, bot, duration, api) {
             const circle = document.getElementById('progress-circle');
             const radius = circle.r.baseVal.value;
             const circumference = 2 * Math.PI * radius;
@@ -376,9 +377,6 @@
                     actionBtn.classList.add('active');
                     btnText.textContent = "Complete Verification";
                     
-                    const startParam = `verify_ma_${token}`;
-                    actionBtn.href = `https://t.me/${bot}?start=${startParam}`;
-
                     // Vibrate to notify user if SDK is available
                     if (window.Telegram && window.Telegram.WebApp && Telegram.WebApp.HapticFeedback) {
                         Telegram.WebApp.HapticFeedback.notificationOccurred('success');
@@ -391,36 +389,55 @@
                 }
             }, 1000);
 
-            // Click action
-            actionBtn.addEventListener('click', (e) => {
-                e.preventDefault(); // Stop default browser iframe navigation
+            let isVerifying = false;
+
+            // Click action (Calls API in background and sends files directly to user chat)
+            actionBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
                 
-                if (timeLeft > 0) {
+                if (timeLeft > 0 || isVerifying) {
                     return;
                 }
                 
-                const startParam = `verify_ma_${token}`;
-                const telegramDeepLink = `https://t.me/${bot}?start=${startParam}`;
-                const tgProtoLink = `tg://resolve?domain=${bot}&start=${startParam}`;
-
-                if (window.Telegram && window.Telegram.WebApp) {
-                    try {
-                        // Native SDK method automatically handles opening and closing the webview
-                        Telegram.WebApp.openTelegramLink(telegramDeepLink);
-                    } catch (err) {
-                        // Fallback to native protocol
-                        window.location.href = tgProtoLink;
+                isVerifying = true;
+                actionBtn.style.pointerEvents = "none";
+                actionBtn.style.opacity = "0.7";
+                btnText.textContent = "Decrypting & Sending files...";
+                
+                try {
+                    const verifyUrl = `${api}/verify?token=${token}`;
+                    const response = await fetch(verifyUrl);
+                    const data = await response.json();
+                    
+                    if (data.status === "success") {
+                        btnText.textContent = "✓ Files Sent to Chat!";
+                        actionBtn.style.background = "linear-gradient(135deg, #10b981 0%, #059669 100%)";
+                        actionBtn.style.boxShadow = "0 8px 24px rgba(16, 185, 129, 0.3)";
+                        
+                        if (window.Telegram && window.Telegram.WebApp) {
+                            if (Telegram.WebApp.HapticFeedback) {
+                                Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+                            }
+                            
+                            // Close WebApp after 1.5 seconds so user reads success message
+                            setTimeout(() => {
+                                Telegram.WebApp.close();
+                            }, 1500);
+                        }
+                    } else {
+                        throw new Error(data.message || "Verification Failed");
+                    }
+                } catch (err) {
+                    isVerifying = false;
+                    actionBtn.style.pointerEvents = "auto";
+                    actionBtn.style.opacity = "1";
+                    btnText.textContent = "❌ Retry Verification";
+                    
+                    if (window.Telegram && window.Telegram.WebApp && Telegram.WebApp.HapticFeedback) {
+                        Telegram.WebApp.HapticFeedback.notificationOccurred('error');
                     }
                     
-                    // Close the WebApp after a small delay to handle platforms where it doesn't auto-close
-                    setTimeout(() => {
-                        try {
-                            Telegram.WebApp.close();
-                        } catch (e) {}
-                    }, 500);
-                } else {
-                    // Fallback for non-WebApp environment
-                    window.location.href = telegramDeepLink;
+                    alert("Error: " + err.message);
                 }
             });
         }
