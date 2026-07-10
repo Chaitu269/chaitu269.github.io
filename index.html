@@ -270,7 +270,7 @@
                 </svg>
             </div>
             <h1>Secure Verification</h1>
-            <p class="subtitle">Please wait for the secure session validation to complete.<br><span style="font-size: 11px; opacity: 0.6; display: inline-block; margin-top: 4px;">v3.2.1</span></p>
+            <p class="subtitle">Please wait for the secure session validation to complete.<br><span style="font-size: 11px; opacity: 0.6; display: inline-block; margin-top: 4px;">v3.3.0</span></p>
         </div>
 
         <!-- Timer Circle -->
@@ -320,9 +320,8 @@
 
         // Get Query Parameters
         const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
+        const payload = urlParams.get('payload') || urlParams.get('token');
         const bot = urlParams.get('bot');
-        const api = urlParams.get('api');
         const countdownSeconds = parseInt(urlParams.get('cd')) || 5;
 
         const mainContent = document.getElementById('main-content');
@@ -330,15 +329,15 @@
         const errorMessage = document.getElementById('error-message');
 
         // Validation Check
-        if (!token || !bot || !api) {
+        if (!payload || !bot) {
             mainContent.style.display = 'none';
             errorBox.style.display = 'block';
             errorMessage.textContent = 'Verification parameters are missing. Please launch the link directly from the bot.';
         } else {
-            startVerification(token, bot, countdownSeconds, api);
+            startVerification(payload, bot, countdownSeconds);
         }
 
-        function startVerification(token, bot, duration, api) {
+        function startVerification(payload, bot, duration) {
             const circle = document.getElementById('progress-circle');
             const radius = circle.r.baseVal.value;
             const circumference = 2 * Math.PI * radius;
@@ -389,66 +388,41 @@
                 }
             }, 1000);
 
-            let isVerifying = false;
+            let hasClicked = false;
 
-            // Click action (Calls API in background and sends files directly to user chat)
-            actionBtn.addEventListener('click', async (e) => {
+            // Click action (Redirects to Telegram bot start deep link)
+            actionBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 
-                if (timeLeft > 0 || isVerifying) {
+                if (timeLeft > 0 || hasClicked) {
                     return;
                 }
                 
-                isVerifying = true;
+                hasClicked = true;
                 actionBtn.style.pointerEvents = "none";
                 actionBtn.style.opacity = "0.7";
-                btnText.textContent = "Decrypting & Sending files...";
+                btnText.textContent = "Redirecting back to bot...";
                 
-                try {
-                    const verifyUrl = `${api}/verify?token=${token}`;
-                    const response = await fetch(verifyUrl);
-                    const data = await response.json();
-                    
-                    if (data.status === "success") {
-                        btnText.textContent = "✓ Files Sent to Chat!";
-                        actionBtn.style.background = "linear-gradient(135deg, #10b981 0%, #059669 100%)";
-                        actionBtn.style.boxShadow = "0 8px 24px rgba(16, 185, 129, 0.3)";
-                        
-                        if (window.Telegram && window.Telegram.WebApp) {
-                            if (Telegram.WebApp.HapticFeedback) {
-                                Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-                            }
-                            
-                            // Close WebApp after 1.5 seconds so user reads success message
-                            setTimeout(() => {
-                                Telegram.WebApp.close();
-                            }, 1500);
-                        }
-                    } else {
-                        throw new Error(data.message || "Verification Failed");
-                    }
-                } catch (err) {
-                    isVerifying = false;
-                    actionBtn.style.pointerEvents = "auto";
-                    actionBtn.style.opacity = "1";
-                    btnText.textContent = "❌ Retry Verification";
-                    
-                    if (window.Telegram && window.Telegram.WebApp && Telegram.WebApp.HapticFeedback) {
-                        Telegram.WebApp.HapticFeedback.notificationOccurred('error');
+                const startParam = `verify_ok_${payload}`;
+                const telegramDeepLink = `https://t.me/${bot}?start=${startParam}`;
+                const tgProtoLink = `tg://resolve?domain=${bot}&start=${startParam}`;
+
+                if (window.Telegram && window.Telegram.WebApp) {
+                    try {
+                        Telegram.WebApp.openTelegramLink(telegramDeepLink);
+                    } catch (err) {
+                        window.location.href = tgProtoLink;
                     }
                     
-                    const verifyUrl = `${api}/verify?token=${token}`;
-                    let detailedMessage = `🚨 Connection Error details:\n\n`;
-                    detailedMessage += `• Error: ${err.message}\n`;
-                    detailedMessage += `• Type: ${err.name}\n`;
-                    detailedMessage += `• Request URL: ${verifyUrl}\n\n`;
-                    detailedMessage += `🔍 Debug Checklist:\n`;
-                    detailedMessage += `1. Is your bot running? (Run: python3 main.py)\n`;
-                    detailedMessage += `2. Is port 30000 open & reachable from outside?\n`;
-                    detailedMessage += `3. Are you using HTTPS? Telegram requires HTTPS domains (HTTP URLs will fail silently due to mixed-content blocking).\n`;
-                    detailedMessage += `4. Check your browser/inspection console for CORS preflight errors.`;
-                    
-                    alert(detailedMessage);
+                    // Close the WebApp after a small delay to handle transition registration
+                    setTimeout(() => {
+                        try {
+                            Telegram.WebApp.close();
+                        } catch (e) {}
+                    }, 250);
+                } else {
+                    // Fallback for normal browser
+                    window.location.href = telegramDeepLink;
                 }
             });
         }
